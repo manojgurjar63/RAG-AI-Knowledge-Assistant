@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Chat Assistant</title>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">
+        <h2>AI Assistant</h2>
+    </div>
+    
+    <div class="chat-box" id="chatBox">
+        <div class="message-list" id="messageList">
+            <div class="message bot-msg">
+                Hello! Ask me anything about your uploaded documents.
+            </div>
+        </div>    
+
+        <div class="input-area">
+            <input class="input-question" type="text" id="userInput" placeholder="Type your question here" onkeypress="handleKeyPress(event)">
+            <button class="button" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+</div>
+
+<a href="index.html" class="back-link">← Go back to Admin Dashboard</a>
+
+<style>
+
+    body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background-color: New Gray;
+    }
+
+    .chat-container {
+            width: 800px;
+            height: 800px;
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px; 
+            padding: 20px;
+    }
+
+    .chat-box {
+            width: 650px;
+            height: 480px;
+            border: 1px solid lightgray;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            /*border-color: black;*/
+            gap: 10px; 
+            padding: 20px;
+    
+            overflow-y: auto;        /* Adds vertical scrolling when messages overflow */
+            box-sizing: border-box;              
+    }   
+
+    .message-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+        margin-bottom: 20px;
+    }    
+
+    .message {
+        padding: 10px 14px;
+        border-radius: 15px;
+        max-width: 70%;
+        font-size: 14px;
+        line-height: 1.4;
+        word-wrap: break-word;
+    }    
+    
+    .bot-msg {
+        background-color: Platinum;
+        color: black;
+        align-self: flex-start;
+        border-bottom-left-radius: 2px;
+    }
+
+    .user-msg {
+        background-color: blue;
+        color: white;
+        align-self: flex-end; /* This forces it to the right */
+        border-bottom-right-radius: 2px;
+    }
+
+    .input-area {
+        margin-top: auto; /* Pushes input area to the very bottom of the chat-box */
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+    }
+
+    .input-question {
+        flex-grow: 1; /* Makes input take up remaining space */
+        height: 40px;
+        border-radius: 5px;
+        border: 1px solid silver;
+        padding: 0 10px;
+        box-sizing: border-box;
+    }
+
+    .button {
+        width: 80px;
+        height: 40px;
+        border-radius: 5px;
+        background-color: blue;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+
+    .button:hover {
+        background-color: blue;
+    }
+
+    .back-link {
+        margin-top: 20px;
+        color: Dark Charcoal;
+        text-decoration: none;
+    }
+
+</style>
+
+<script>
+    async function sendMessage() {
+        const inputField = document.getElementById('userInput');
+        const chatContainer = document.getElementById('chat-container');
+        const messageText = inputField.value.trim();
+
+        if (messageText === '') return;
+
+        const messageList = document.getElementById('messageList');
+
+        const userMessageDiv = document.createElement('div');
+        userMessageDiv.classList.add('message', 'user-msg');
+        userMessageDiv.textContent = messageText;
+
+        messageList.appendChild(userMessageDiv);
+
+        inputField.value = '';
+
+        const chatBox = document.getElementById('chatBox');
+
+        const botMessageDiv = document.createElement('div');
+        botMessageDiv.classList.add('message', 'bot-msg');
+        botMessageDiv.textContent = '...'; // Temporary typing placeholder
+        let elapsed = 0;
+        const timer = setInterval(() => {
+            elapsed++;
+            botMessageDiv.textContent = `Thinking... ${elapsed}s`;
+        }, 1000)
+        messageList.appendChild(botMessageDiv);
+
+        try {
+            const response = await fetch('/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ question: messageText })
+            });
+
+            clearInterval(timer);
+
+            if (!response.ok) {
+                // Handle 404 documents not found or 500 error instances safely
+                const errData = await response.json().catch(() => ({}));
+                botMessageDiv.textContent = errData.answer || errData.message || "Something went wrong.";
+                return;
+            } 
+
+            const replyText = await response.json();
+            botMessageDiv.textContent = `${replyText.answer}\n\n⏱ ${replyText.timeTaken}ms`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+        } catch (error) {
+            console.error("Chat Error:", error);
+            botMessageDiv.textContent = "Error: Failed to connect to backend server.";
+        }
+
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            console.log("User typed:", inputField.value.trim());
+            sendMessage();
+        }
+    }
+
+</script>
+
+</body>
+</html>
